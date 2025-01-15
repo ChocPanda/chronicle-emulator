@@ -186,7 +186,7 @@ async fn main() {
             "/v2/unstructuredlogentries:batchCreate",
             post(create_unstructured),
         )
-        .route("v2/udmevents:batchCreate", post(create_udm_events))
+        .route("/v2/udmevents:batchCreate", post(create_udm_events))
         // Query the posted logs.
         .route("/logs", get(logs));
 
