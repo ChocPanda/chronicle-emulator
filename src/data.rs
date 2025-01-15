@@ -30,6 +30,26 @@ pub struct UnstructuredLog {
     ts_rfc3339: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UdmEvents {
+    pub customer_id: String,
+    pub events: Vec<UdmEvent>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UdmEvent {
+    metadata: UdmMetadata,
+    pub invalid: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UdmMetadata {
+    log_type: String,
+    namespace: Option<String>,
+    ts_epoch_microseconds: Option<i64>,
+    ts_rfc3339: Option<String>,
+}
+
 impl From<UnstructuredLogs> for Vec<Log> {
     fn from(logs: UnstructuredLogs) -> Self {
         logs.entries
@@ -51,8 +71,32 @@ impl From<UnstructuredLogs> for Vec<Log> {
     }
 }
 
+impl From<UdmEvents> for Vec<Log> {
+    fn from(logs: UdmEvents) -> Self {
+        logs.events.into_iter().map(|event| Log {
+            customer_id: logs.customer_id.clone(),
+            log_type: event.metadata.log_type.clone(),
+            log_text: String::new(),
+            namespace: event.metadata.namespace.clone(),
+            ts_rfc3339: event.metadata.ts_rfc3339.unwrap_or_else(|| {
+                event.metadata
+                    .ts_epoch_microseconds
+                    .map(|ms| Utc.timestamp_millis(ms))
+                    .unwrap_or_else(Utc::now)
+                    .to_rfc3339()
+            }),
+        }).collect()
+    }
+}
+
 /// Adds the logs to our (in memory) database.
-pub fn add_to_data(logs: UnstructuredLogs) {
+pub fn add_unstructured_to_data(logs: UnstructuredLogs) {
+    let mut data = DATA.lock().unwrap();
+    data.append(&mut Vec::from(logs));
+}
+
+/// Adds the logs to our (in memory) database.
+pub fn add_udm_events_to_data(logs: UdmEvents) {
     let mut data = DATA.lock().unwrap();
     data.append(&mut Vec::from(logs));
 }

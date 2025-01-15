@@ -1,4 +1,4 @@
-FROM rust:1.62.0 as builder
+FROM rust:1.82.0 as builder
 
 WORKDIR /app
 RUN apt update && apt install lld clang -y
@@ -7,7 +7,7 @@ COPY . .
 
 RUN cargo build --release
 
-FROM rust:1.62.0 as runtime
+FROM rust:1.82.0 as runtime
 
 WORKDIR /app
 

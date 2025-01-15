@@ -66,6 +66,26 @@ async fn logs(log_type: Query<LogType>) -> Json<Vec<data::Log>> {
     Json(logs)
 }
 
+/// Handler that posts a set UDM events.
+/// To test unauthorised entries, if the `customer_id` of "INVALID" is passed
+/// the handler will return a 401 UNAUTHORISED response.
+/// if the invalid UDM field is passed
+/// the handler will return 400 BAD_REQUEST response.
+async fn create_udm_events(
+    Json(payload): Json<data::UdmEvents>,
+    _user: User,
+) -> impl IntoResponse {
+    let contains_invalid_events = payload.events.iter().any(|event| event.invalid.unwrap_or_default());
+    if payload.customer_id == "INVALID" {
+        (StatusCode::UNAUTHORIZED, Json(false))
+    } else if contains_invalid_events {
+        (StatusCode::BAD_REQUEST, Json(false))
+    }else {
+        data::add_udm_events_to_data(payload);
+        (StatusCode::CREATED, Json(true))
+    }
+}
+
 /// Handler that posts a set of unstructured log entries.
 /// To test invalid entries, if a `log_type` of "INVALID" is passed
 /// the handler will return a 400 BAD_REQUEST response.
@@ -76,7 +96,7 @@ async fn create_unstructured(
     if payload.log_type == "INVALID" {
         (StatusCode::BAD_REQUEST, Json(false))
     } else {
-        data::add_to_data(payload);
+        data::add_unstructured_to_data(payload);
         (StatusCode::CREATED, Json(true))
     }
 }
@@ -166,6 +186,7 @@ async fn main() {
             "/v2/unstructuredlogentries:batchCreate",
             post(create_unstructured),
         )
+        .route("/v2/udmevents:batchCreate", post(create_udm_events))
         // Query the posted logs.
         .route("/logs", get(logs));
 
